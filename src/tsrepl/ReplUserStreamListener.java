@@ -1,5 +1,7 @@
 package tsrepl;
 
+import org.joda.time.DateTime;
+
 import twitter4j.*;
 
 public class ReplUserStreamListener implements UserStreamListener {
@@ -8,18 +10,24 @@ public class ReplUserStreamListener implements UserStreamListener {
 	String mMentionPrefix;
 	Repl mRepl;
 	
-	public ReplUserStreamListener(Twitter twitter) throws TwitterException {
-		if (twitter == null) {
+	ReplConfiguration mConfig;
+	DateTime mNextCacheCleanup;
+	
+	public ReplUserStreamListener(Twitter twitter, ReplConfiguration config) throws TwitterException {
+		if (twitter == null || config == null) {
 			throw new IllegalArgumentException();
 		}
 		mTwitter = twitter;
 		mUserName = twitter.getScreenName();
 		mMentionPrefix = "@" + mUserName + " ";
 		mRepl = new Repl();
+		mConfig = config;
+		mNextCacheCleanup = DateTime.now().plusHours(config.getCacheLifetime());
 	}
 	
     @Override
     public void onStatus(Status status) {
+    	cleaupCacheIfNeeded();
     	String text = status.getText();
     	if (!text.startsWith(mMentionPrefix)) {
     		return;
@@ -28,12 +36,26 @@ public class ReplUserStreamListener implements UserStreamListener {
     	String code = text.substring(mMentionPrefix.length());
     	String userName = status.getUser().getScreenName();
     	
+    	String result = mRepl.eval(userName, code);
+    	if (result == null) {
+    		return;
+    	}
+    	
     	try {
-    		mTwitter.updateStatus("@" + userName + " " + mRepl.eval(userName, code));
+    		mTwitter.updateStatus("@" + userName + " " + result);
     	} catch (TwitterException ex) {
             ex.printStackTrace();
             System.out.println("Failed to update status: " + ex.getMessage());
     	}
+    }
+    
+    void cleaupCacheIfNeeded() {
+    	if (DateTime.now().compareTo(mNextCacheCleanup) < 0) {
+    		return;
+    	}
+    	
+    	mRepl.cleanup(mConfig.getCacheLifetime());
+    	mNextCacheCleanup = DateTime.now().plusHours(mConfig.getCacheLifetime());
     }
 
     @Override

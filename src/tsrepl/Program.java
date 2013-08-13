@@ -1,12 +1,22 @@
 package tsrepl;
 
+import java.io.*;
+import java.util.*;
+
+import javax.security.auth.login.Configuration;
+
 import twitter4j.*;
 
 public class Program {
-    public static void main(String[] args) throws TwitterException {
+	
+	
+    public static void main(String[] args) throws Exception {
+    	ReplConfiguration cfg = new ReplConfiguration();
+    	cfg.load();
+    	
     	Twitter twitter = new TwitterFactory().getInstance();
         TwitterStream twitterStream = new TwitterStreamFactory().getInstance();
-        twitterStream.addListener(new ReplUserStreamListener(twitter));
+        twitterStream.addListener(new ReplUserStreamListener(twitter, cfg));
         twitterStream.user();
     }
 }
