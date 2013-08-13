@@ -5,6 +5,8 @@ import org.joda.time.DateTime;
 import twitter4j.*;
 
 public class ReplUserStreamListener implements UserStreamListener {
+	static final int statusUpdateLimit = 140;
+	
 	Twitter mTwitter;
 	String mUserName;
 	String mMentionPrefix;
@@ -41,8 +43,16 @@ public class ReplUserStreamListener implements UserStreamListener {
     		return;
     	}
     	
+    	String newStatus = "@" + userName + " " + result;
+    	if (newStatus.length() > statusUpdateLimit) {
+    		newStatus = newStatus.substring(0, statusUpdateLimit);
+    	}
+    	
+    	StatusUpdate update = new StatusUpdate(newStatus);
+    	update.inReplyToStatusId(status.getId());
+    	
     	try {
-    		mTwitter.updateStatus("@" + userName + " " + result);
+    		mTwitter.updateStatus(update);
     	} catch (TwitterException ex) {
             ex.printStackTrace();
             System.out.println("Failed to update status: " + ex.getMessage());

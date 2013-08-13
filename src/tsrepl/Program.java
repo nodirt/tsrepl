@@ -1,10 +1,5 @@
 package tsrepl;
 
-import java.io.*;
-import java.util.*;
-
-import javax.security.auth.login.Configuration;
-
 import twitter4j.*;
 
 public class Program {
