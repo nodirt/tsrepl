@@ -13,7 +13,7 @@ public class ReplConfiguration {
         return mCacheLifetime;
     }
 
-    public void load() throws IOException {
+    public void load() throws IOException { 
         File propFile = new File(filename);
         if (!propFile.exists()) {
             return;

@@ -33,11 +33,71 @@ public class Repl {
     static final String scopeInitScriptResourceName = "/js/scopeInit.js";
     final String mInitScript;
     final Map<String, Entry> mScopes = new HashMap<String, Entry>();
+    final Evil mEvil;
+    final Thread mWorkerThread;
+    final Object mEvilResponse = new Object();
+
+    class Evil implements Runnable {
+        String mResult;
+        String mExpression;
+        String mUserName;
+
+        public String getResult() {
+            return mResult;
+        }
+
+        public void setExpression(String expression) {
+            mExpression = expression;
+        }
+
+        public void setUserName(String userName) {
+            mUserName = userName;
+        }
+
+        String eval() {
+            Context cx = Context.enter();
+            try {
+                Scriptable scope = getScope(mUserName);
+
+                try {
+                    Object result = cx.evaluateString(scope, mExpression,
+                            mUserName, 1, null);
+                    if (result == Undefined.instance) {
+                        return null;
+                    } else {
+                        return Context.toString(result);
+                    }
+                } catch (Exception ex) {
+                    return ex.getMessage();
+                }
+            } finally {
+                // Exit from the context.
+                Context.exit();
+            }
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    this.wait();
+                } catch (InterruptedException ex) {
+                    break;
+                }
+                
+                mResult = eval();
+                mEvilResponse.notifyAll();
+            }
+        }
+    }
 
     public Repl() {
         InputStream resource = getClass().getResourceAsStream(
                 scopeInitScriptResourceName);
+        mEvil = new Evil();
         mInitScript = new Scanner(resource).useDelimiter("\\A").next();
+        mWorkerThread = new Thread(mEvil);
+        mWorkerThread.start();
     }
 
     void cleanup(int cacheLifetimeInHours) {
@@ -71,25 +131,33 @@ public class Repl {
         return entry.getScope();
     }
 
-    public String eval(String userName, String text) {
-        Context cx = Context.enter();
-        try {
-            Scriptable scope = getScope(userName);
-
+    public String eval(final String userName, final String text) {
+        synchronized (mEvil) {
+            mEvil.setUserName(userName);
+            mEvil.setExpression(text);
+            mEvil.notifyAll();
+            
             try {
-                Object result = cx.evaluateString(scope, text, userName, 1,
-                        null);
-                if (result == Undefined.instance) {
-                    return null;
-                } else {
-                    return Context.toString(result);
+                DateTime deadline = DateTime.now().plusSeconds(1);
+                while (true) {
+                    this.mEvilResponse.wait(10);
+                    if ()
                 }
+                while ( workerThread.is()
+                        && DateTime.now().compareTo(deadline) <= 0) {
+                    Thread.sleep(10);
+                }
+    
+                if (workerThread.isAlive()) {
+                    workerThread.stop();
+                    workerThread.destroy();
+                    return "I wish your algorithm was faster";
+                }
+    
+                return eval.getResult();
             } catch (Exception ex) {
-                return ex.getMessage();
+                return "You are being mean";
             }
-        } finally {
-            // Exit from the context.
-            Context.exit();
         }
     }
 }
