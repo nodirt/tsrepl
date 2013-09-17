@@ -37,7 +37,12 @@ public class Repl {
     public Repl() {
         InputStream resource = getClass().getResourceAsStream(
                 scopeInitScriptResourceName);
-        mInitScript = new Scanner(resource).useDelimiter("\\A").next();
+        Scanner scanner = new Scanner(resource);
+        try {
+            mInitScript = scanner.useDelimiter("\\A").next();
+        } finally {
+            scanner.close();
+        }
     }
 
     void cleanup(int cacheLifetimeInHours) {
