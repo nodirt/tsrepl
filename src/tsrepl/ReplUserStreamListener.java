@@ -1,11 +1,15 @@
 package tsrepl;
 
+import java.util.*;
+
 import org.joda.time.DateTime;
 
 import twitter4j.*;
 
 public class ReplUserStreamListener implements UserStreamListener {
     static final int statusUpdateLimit = 140;
+    
+    final Random mRand = new Random();
 
     Twitter mTwitter;
     String mUserName;
@@ -47,6 +51,11 @@ public class ReplUserStreamListener implements UserStreamListener {
         String newStatus = "@" + userName + " " + result;
         if (newStatus.length() > statusUpdateLimit) {
             newStatus = newStatus.substring(0, statusUpdateLimit);
+        }
+        
+        String dup = "\n\n\n// dup" + Math.abs(mRand.nextInt() % 10000);
+        if (newStatus.length() + dup.length() <= statusUpdateLimit) {
+            newStatus += dup; 
         }
 
         StatusUpdate update = new StatusUpdate(newStatus);
