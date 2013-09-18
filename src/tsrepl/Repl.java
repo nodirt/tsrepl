@@ -2,6 +2,8 @@ package tsrepl;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.Callable;
 
 import org.joda.time.*;
 import org.mozilla.javascript.*;
@@ -31,76 +33,13 @@ public class Repl {
     }
 
     static final String scopeInitScriptResourceName = "/js/scopeInit.js";
-    final String mInitScript;
-    final Map<String, Entry> mScopes = new HashMap<String, Entry>();
-    final Evil mEvil;
-    final Thread mWorkerThread;
-    final Object mEvilResponse = new Object();
+    final String mInitScript = readInitScript();
+    final ConcurrentMap<String, Entry> mScopes = new ConcurrentHashMap<String, Entry>();
+    final ExecutorService mEvilExecutor = Executors.newSingleThreadExecutor();
 
-    class Evil implements Runnable {
-        String mResult;
-        String mExpression;
-        String mUserName;
-
-        public String getResult() {
-            return mResult;
-        }
-
-        public void setExpression(String expression) {
-            mExpression = expression;
-        }
-
-        public void setUserName(String userName) {
-            mUserName = userName;
-        }
-
-        String eval() {
-            Context cx = Context.enter();
-            try {
-                Scriptable scope = getScope(mUserName);
-
-                try {
-                    Object result = cx.evaluateString(scope, mExpression,
-                            mUserName, 1, null);
-                    if (result == Undefined.instance) {
-                        return null;
-                    } else {
-                        return Context.toString(result);
-                    }
-                } catch (Exception ex) {
-                    return ex.getMessage();
-                }
-            } finally {
-                // Exit from the context.
-                Context.exit();
-            }
-        }
-
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    this.wait();
-                } catch (InterruptedException ex) {
-                    break;
-                }
-                
-                mResult = eval();
-                mEvilResponse.notifyAll();
-            }
-        }
-    }
-
-    public Repl() {
+    private String readInitScript() {
         InputStream resource = getClass().getResourceAsStream(
                 scopeInitScriptResourceName);
-        mEvil = new Evil();
-        mInitScript = readInitScript(resource);
-        mWorkerThread = new Thread(mEvil);
-        mWorkerThread.start();
-    }
-
-    private String readInitScript(InputStream resource) {
         Scanner scanner = new Scanner(resource);
         try {
             return scanner.useDelimiter("\\A").next();
@@ -140,33 +79,49 @@ public class Repl {
         return entry.getScope();
     }
 
-    public String eval(final String userName, final String text) {
-        synchronized (mEvil) {
-            mEvil.setUserName(userName);
-            mEvil.setExpression(text);
-            mEvil.notifyAll();
-            
+    String evalRaw(String userName, String expression) {
+        Context cx = Context.enter();
+        try {
+            Scriptable scope = getScope(userName);
+
             try {
-                DateTime deadline = DateTime.now().plusSeconds(1);
-                while (true) {
-                    this.mEvilResponse.wait(10);
-                    if ()
+                Object result = cx.evaluateString(scope, expression,
+                        userName, 1, null);
+                if (result == Undefined.instance) {
+                    return null;
+                } else {
+                    return Context.toString(result);
                 }
-                while ( workerThread.is()
-                        && DateTime.now().compareTo(deadline) <= 0) {
-                    Thread.sleep(10);
-                }
-    
-                if (workerThread.isAlive()) {
-                    workerThread.stop();
-                    workerThread.destroy();
-                    return "I wish your algorithm was faster";
-                }
-    
-                return eval.getResult();
             } catch (Exception ex) {
-                return "You are being mean";
+                return ex.getMessage();
             }
+        } finally {
+            // Exit from the context.
+            Context.exit();
+        }
+    }
+    
+    public String eval(final String userName, final String expression) {
+        try {
+            Future<String> evaluation = mEvilExecutor.submit(new Callable<String>() {
+                public String call() {
+                    return evalRaw(userName, expression);
+                }
+            });
+            
+            DateTime deadline = DateTime.now().plusSeconds(1);
+            while (!evaluation.isDone() && DateTime.now().compareTo(deadline) <= 0) {
+                Thread.sleep(10);
+            }
+
+            if (evaluation.isDone()) {
+                return evaluation.get();
+            } else {
+                evaluation.cancel(true);
+                return "I wish your algorithm was faster";
+            }
+        } catch (Exception ex) {
+            return "You are being mean: " + ex.getMessage();
         }
     }
 }
