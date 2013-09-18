@@ -95,9 +95,18 @@ public class Repl {
         InputStream resource = getClass().getResourceAsStream(
                 scopeInitScriptResourceName);
         mEvil = new Evil();
-        mInitScript = new Scanner(resource).useDelimiter("\\A").next();
+        mInitScript = readInitScript(resource);
         mWorkerThread = new Thread(mEvil);
         mWorkerThread.start();
+    }
+
+    private String readInitScript(InputStream resource) {
+        Scanner scanner = new Scanner(resource);
+        try {
+            return scanner.useDelimiter("\\A").next();
+        } finally {
+            scanner.close();
+        }
     }
 
     void cleanup(int cacheLifetimeInHours) {
