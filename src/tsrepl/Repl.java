@@ -33,9 +33,9 @@ public class Repl {
         }
     }
 
-    static final String scopeInitScriptResourceName = "/js/scopeInit.js";
     final ReplConfiguration mCfg;
-    final String mInitScript = readInitScript();
+    final String mInitScript = readScript("/js/scopeInit.js");
+    final String mConsoleOutputScript = readScript("/js/consoleOutput.js");
     final ConcurrentMap<String, Entry> mScopes = new ConcurrentHashMap<String, Entry>();
     final ExecutorService mEvilExecutor = Executors.newSingleThreadExecutor();
     
@@ -46,9 +46,8 @@ public class Repl {
         mCfg = cfg;
     }
 
-    private String readInitScript() {
-        InputStream resource = getClass().getResourceAsStream(
-                scopeInitScriptResourceName);
+    private String readScript(String name) {
+        InputStream resource = getClass().getResourceAsStream(name);
         Scanner scanner = new Scanner(resource);
         try {
             return scanner.useDelimiter("\\A").next();
@@ -88,19 +87,35 @@ public class Repl {
         return entry.getScope();
     }
 
+    String evalString(Context cx, Scriptable scope, String expression, String filename) {
+        Object result = cx.evaluateString(scope, expression, filename, 1, null);
+        if (result == Undefined.instance) {
+            return null;
+        } else {
+            return Context.toString(result);
+        }
+    }
+    String evalRaw(Context cx, Scriptable scope, String userName, String expression) {
+        String evalResult = evalString(cx, scope, expression, userName);
+        String consoleOutput = evalString(cx, scope, mConsoleOutputScript, userName);
+        if (evalResult == null && consoleOutput == null) {
+            return null;
+        } else if (evalResult == null) {
+            final String lineEnd = "\n";
+            if (consoleOutput.endsWith(lineEnd)) {
+                consoleOutput = consoleOutput.substring(0, consoleOutput.length() - lineEnd.length());
+            }
+            return consoleOutput;
+        } else {
+            return consoleOutput + evalResult;
+        }
+    }
     String evalRaw(String userName, String expression) {
         Context cx = Context.enter();
         try {
             Scriptable scope = getScope(userName);
-
             try {
-                Object result = cx.evaluateString(scope, expression,
-                        userName, 1, null);
-                if (result == Undefined.instance) {
-                    return null;
-                } else {
-                    return Context.toString(result);
-                }
+                return evalRaw(cx, scope, userName, expression);
             } catch (Exception ex) {
                 return ex.getMessage();
             }

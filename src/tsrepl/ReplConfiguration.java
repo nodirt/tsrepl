@@ -48,7 +48,7 @@ public class ReplConfiguration {
         
         String timeout = props.getProperty("timeout");
         if (timeout != null) {
-            mTimeout = Duration.parse(timeout);
+            mTimeout = Duration.millis(Integer.parseInt(timeout));
         }
         
         mBreakAttemptMessage = props.getProperty("breakAttemptMessage", mBreakAttemptMessage);
