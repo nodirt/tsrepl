@@ -41,11 +41,11 @@ public class ReplUserStreamListener implements UserStreamListener {
             return;
         }
 
-        System.out.println("Processing: " + text);
-        
         String code = text.substring(mMentionPrefix.length());
         String userName = status.getUser().getScreenName();
 
+        System.out.println("@" + userName + " said " + code);
+        
         String result = mRepl.eval(userName, code);
         if (result == null) {
             return;
