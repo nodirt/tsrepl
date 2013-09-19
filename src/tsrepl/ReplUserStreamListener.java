@@ -36,10 +36,13 @@ public class ReplUserStreamListener implements UserStreamListener {
     public void onStatus(Status status) {
         cleaupCacheIfNeeded();
         String text = status.getText();
+        
         if (!text.startsWith(mMentionPrefix)) {
             return;
         }
 
+        System.out.println("Processing: " + text);
+        
         String code = text.substring(mMentionPrefix.length());
         String userName = status.getUser().getScreenName();
 
