@@ -3,14 +3,28 @@ package tsrepl;
 import java.io.*;
 import java.util.*;
 
+import org.joda.time.Duration;
+import org.joda.time.ReadableDuration;
+
 public class ReplConfiguration {
     static final String filename = "repl.properties";
-    static final String cacheLifetimeKey = "cacheLifetime";
 
     int mCacheLifetime = 24;
+    ReadableDuration mTimeout = Duration.standardSeconds(1);
+    String mBreakAttemptMessage = "Are you trying to break me?";
+    String mTimeoutMessage = "Too slow!";
 
-    public int getCacheLifetime() {
+    public int cacheLifetime() {
         return mCacheLifetime;
+    }
+    public ReadableDuration timeout() {
+        return mTimeout;
+    }
+    public String breakAttemptMessage() {
+        return mBreakAttemptMessage;
+    }
+    public String timeoutMessage() {
+        return mTimeoutMessage;
     }
 
     public void load() throws IOException { 
@@ -27,9 +41,17 @@ public class ReplConfiguration {
             reader.close();
         }
 
-        String strCacheLifetime = props.getProperty(cacheLifetimeKey);
+        String strCacheLifetime = props.getProperty("cacheLifetime");
         if (strCacheLifetime != null) {
             mCacheLifetime = Integer.parseInt(strCacheLifetime);
         }
+        
+        String timeout = props.getProperty("timeout");
+        if (timeout != null) {
+            mTimeout = Duration.parse(timeout);
+        }
+        
+        mBreakAttemptMessage = props.getProperty("breakAttemptMessage", mBreakAttemptMessage);
+        mTimeoutMessage = props.getProperty("timeoutMessage", mTimeoutMessage);
     }
 }

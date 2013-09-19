@@ -9,6 +9,7 @@ import org.joda.time.*;
 import org.mozilla.javascript.*;
 
 public class Repl {
+    
 
     class Entry {
         final Scriptable mScope;
@@ -33,9 +34,17 @@ public class Repl {
     }
 
     static final String scopeInitScriptResourceName = "/js/scopeInit.js";
+    final ReplConfiguration mCfg;
     final String mInitScript = readInitScript();
     final ConcurrentMap<String, Entry> mScopes = new ConcurrentHashMap<String, Entry>();
     final ExecutorService mEvilExecutor = Executors.newSingleThreadExecutor();
+    
+    public Repl(ReplConfiguration cfg) {
+        if (cfg == null) {
+            throw new IllegalArgumentException("cfg is null");
+        }
+        mCfg = cfg;
+    }
 
     private String readInitScript() {
         InputStream resource = getClass().getResourceAsStream(
@@ -109,7 +118,7 @@ public class Repl {
                 }
             });
             
-            DateTime deadline = DateTime.now().plusSeconds(1);
+            DateTime deadline = DateTime.now().plus(mCfg.timeout());
             while (!evaluation.isDone() && DateTime.now().compareTo(deadline) <= 0) {
                 Thread.sleep(10);
             }
@@ -118,10 +127,10 @@ public class Repl {
                 return evaluation.get();
             } else {
                 evaluation.cancel(true);
-                return "I wish your algorithm was faster";
+                return mCfg.timeoutMessage();
             }
         } catch (Exception ex) {
-            return "You are being mean: " + ex.getMessage();
+            return mCfg.breakAttemptMessage() + ": " + ex.getMessage();
         }
     }
 }

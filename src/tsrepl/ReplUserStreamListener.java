@@ -27,9 +27,9 @@ public class ReplUserStreamListener implements UserStreamListener {
         mTwitter = twitter;
         mUserName = twitter.getScreenName();
         mMentionPrefix = "@" + mUserName + " ";
-        mRepl = new Repl();
+        mRepl = new Repl(config);
         mConfig = config;
-        mNextCacheCleanup = DateTime.now().plusHours(config.getCacheLifetime());
+        mNextCacheCleanup = DateTime.now().plusHours(config.cacheLifetime());
     }
 
     @Override
@@ -77,9 +77,9 @@ public class ReplUserStreamListener implements UserStreamListener {
             return;
         }
 
-        mRepl.cleanup(mConfig.getCacheLifetime());
+        mRepl.cleanup(mConfig.cacheLifetime());
         mNextCacheCleanup = DateTime.now()
-                .plusHours(mConfig.getCacheLifetime());
+                .plusHours(mConfig.cacheLifetime());
     }
 
     @Override
